@@ -1,0 +1,25 @@
+name: Daily News Bot
+
+on:
+  schedule:
+    # This runs at 01:15 UTC every day, which is 7:00 AM Nepal Time
+    - cron: '15 1 * * *'
+  workflow_dispatch: # This allows you to run it manually for testing
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Install dependencies
+      run: pip install feedparser requests
+    - name: Run the news bot
+      env:
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      run: python daily_news_bot.py
