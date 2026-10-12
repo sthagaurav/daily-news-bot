@@ -1,4 +1,4 @@
-import os 
+import os
 import feedparser
 import requests
 from datetime import datetime
@@ -6,29 +6,33 @@ from datetime import datetime
 # ==========================================
 # 1. CONFIGURATION
 # ==========================================
-
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY") 
-
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
+# We fetch 10 articles per source now!
 FEEDS = {
-    " AI & Tech": [
+    "🤖 New AI Launches & Tech": [
         "https://techcrunch.com/category/artificial-intelligence/feed/",
-        "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"
+        "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+        "https://feeds.feedburner.com/TheHackersNews" 
     ],
-    "💰 Finance": [
+    "💰 Finance & Business": [
         "https://feeds.reuters.com/reuters/businessNews",
         "https://www.cnbc.com/id/100003114/device/rss/rss.html"
     ],
-    "⚽ Football": [
+    "⚽ Sports & Football": [
         "http://feeds.bbci.co.uk/sport/football/rss.xml",
         "https://www.espn.com/espn/rss/soccer/news"
+    ],
+    "🌍 World News": [
+        "http://feeds.bbci.co.uk/news/world/rss.xml",
+        "https://rss.nytimes.com/services/xml/rss/nyt/World.xml"
     ]
 }
 
 # ==========================================
-# 2. FETCH NEWS
+# 2. FETCH NEWS (Now gets 10 items!)
 # ==========================================
 def get_latest_news():
     news_data = {}
@@ -36,7 +40,8 @@ def get_latest_news():
         items = []
         for url in urls:
             feed = feedparser.parse(url)
-            for entry in feed.entries[:3]: 
+            # Changed from 3 to 10 to get more news
+            for entry in feed.entries[:10]: 
                 items.append({
                     "title": entry.title,
                     "link": entry.link
@@ -45,13 +50,28 @@ def get_latest_news():
     return news_data
 
 # ==========================================
-# 3. AI SUMMARIZATION (GROQ)
+# 3. AI SUMMARIZATION (The New Brain)
 # ==========================================
 def summarize_with_ai(news_data):
-    prompt = "You are a morning news anchor. Based on these headlines, write a very brief, 1-sentence summary for each category. Keep it punchy, exciting, and easy to read.\n\n"
+    # We format the data nicely for the AI first
+    formatted_data = ""
     for cat, items in news_data.items():
-        prompt += f"{cat}: {', '.join([i['title'] for i in items])}\n"
-    prompt += "\nFormat the output nicely with emojis."
+        formatted_data += f"--- {cat} ---\n"
+        for item in items:
+            formatted_data += f"- {item['title']}\n"
+        formatted_data += "\n"
+
+    # The new prompt asks for summaries, not just a list
+    prompt = f"""You are an expert morning news anchor. I have fetched 10 headlines for several categories. 
+    For EACH category:
+    1. Write a 5-sentence summary of the biggest trends or news in that category today.
+    2. List the top 3 most important headlines from that category, and for each, write a 1-sentence explanation of what it means.
+    
+    Keep it punchy, engaging, and easy to read on a mobile screen. Use emojis.
+    
+    Here is the raw data:
+    {formatted_data}
+    """
 
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     data = {"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}]}
@@ -70,7 +90,7 @@ def send_to_telegram(message):
     payload = {
         "chat_id": TELEGRAM_CHAT_ID,
         "text": message,
-        "parse_mode": "HTML" # Allows bold text and links
+        "parse_mode": "HTML" 
     }
     
     try:
@@ -86,22 +106,18 @@ def send_to_telegram(message):
 # 5. MAIN EXECUTION
 # ==========================================
 def main():
-    print(" Fetching news...")
+    print("📡 Fetching news...")
     raw_news = get_latest_news()
     
     print("🧠 Summarizing with AI...")
     ai_summary = summarize_with_ai(raw_news)
     
-    # Build the final message using HTML for Telegram
+    # Build the final message
     final_message = f"<b>🌅 Good Morning! Here is your Daily Digest for {datetime.now().strftime('%b %d, %Y')}</b>\n\n"
     final_message += ai_summary + "\n\n"
-    final_message += "<b>👇 Read the full stories:</b>\n"
     
-    for category, items in raw_news.items():
-        final_message += f"\n<b>{category}</b>\n"
-        for item in items:
-            # Create a clickable link for Telegram
-            final_message += f"• <a href=\"{item['link']}\">{item['title']}</a>\n"
+    # Optional: Add a small footer with links if you want, but the AI summary is the main part now.
+    final_message += "<i>Want to read more? Check the full articles on the websites!</i>"
             
     send_to_telegram(final_message)
 
