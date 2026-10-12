@@ -62,7 +62,7 @@ def summarize_with_ai(news_data):
         formatted_data += "\n"
 
     # The new prompt asks for summaries, not just a list
-    prompt = f"""You are an expert morning news anchor. I have fetched 10 headlines for several categories. 
+    prompt = f"""You are an expert morning news anchor. I have fetched headlines for several categories. 
     For EACH category:
     1. Write a 5-sentence summary of the biggest trends or news in that category today.
     2. List the top 3 most important headlines from that category, and for each, write a 1-sentence explanation of what it means.
@@ -74,13 +74,22 @@ def summarize_with_ai(news_data):
     """
 
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
+    # Using a very stable model
     data = {"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}]}
     
     try:
         response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data)
-        return response.json()['choices'][0]['message']['content']
+        res_json = response.json()
+        
+        # Check if the AI actually worked
+        if 'choices' in res_json:
+            return res_json['choices'][0]['message']['content']
+        else:
+            # This will tell us if it was a rate limit error!
+            return f"AI Error: {res_json}"
+            
     except Exception as e:
-        return f"AI Summary unavailable today. Error: {e}"
+        return f"Code Error: {e}"
 
 # ==========================================
 # 4. SEND TO TELEGRAM
@@ -98,9 +107,9 @@ def send_to_telegram(message):
         if response.json().get("ok"):
             print("✅ Morning digest sent to Telegram!")
         else:
-            print(f"❌ Failed: {response.text}")
+            print(f"❌ Telegram Failed: {response.text}")
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f" Error: {e}")
 
 # ==========================================
 # 5. MAIN EXECUTION
@@ -115,8 +124,6 @@ def main():
     # Build the final message
     final_message = f"<b>🌅 Good Morning! Here is your Daily Digest for {datetime.now().strftime('%b %d, %Y')}</b>\n\n"
     final_message += ai_summary + "\n\n"
-    
-    # Optional: Add a small footer with links if you want, but the AI summary is the main part now.
     final_message += "<i>Want to read more? Check the full articles on the websites!</i>"
             
     send_to_telegram(final_message)
