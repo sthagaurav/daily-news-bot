@@ -75,7 +75,7 @@ def summarize_with_ai(news_data):
 
     headers = {"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"}
     # Using a very stable model
-    data = {"model": "llama-3.3-70b-versatile", "messages": [{"role": "user", "content": prompt}]}
+    data = {"model": "llama-3.1-70b-versatile", "messages": [{"role": "user", "content": prompt}]}
     
     try:
         response = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=data)
